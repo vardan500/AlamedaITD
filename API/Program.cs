@@ -5,23 +5,28 @@ using API.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Polly;
 using Polly.RateLimit;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-//builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
-builder.Services.AddDbContext<DataContext>(opt => opt.UseSqlite(builder.Configuration.GetConnectionString("ITDConn")));
+
+builder.Services.AddDbContext<DataContext>(opt =>
+opt.UseSqlite(builder.Configuration.GetConnectionString("ITDConn")));
+
 builder.Services.AddScoped<IGreetingRepository, GreetingRepository>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ICacheService, MemoryCacheService>();
 
 // Configure Polly Rate Limiting Policy
+var rateLimiterConfig = builder.Configuration.GetSection("RateLimiter").Get<RateLimiterConfig>();
 var rateLimitPolicy = Policy.RateLimitAsync(
-    5,                              // Max 5 requests
-    TimeSpan.FromSeconds(1)        // Per 1 seconds
+    rateLimiterConfig.Requests, // Max requests from configuration
+    TimeSpan.FromSeconds(rateLimiterConfig.Time) // Time window from configuration
 );
 
 // Register the policy
@@ -31,6 +36,8 @@ builder.Services.AddSingleton(rateLimitPolicy);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+
 
 var app = builder.Build();
 
@@ -45,6 +52,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
 //app.UseHttpsRedirection();
 
 //app.UseAuthorization();
@@ -52,3 +60,4 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 
 app.Run();
+

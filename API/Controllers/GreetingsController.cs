@@ -17,7 +17,7 @@ namespace API.Controllers
 {
 
     [Route("[controller]")]
-    public class GreetingController(IGreetingRepository repository, ICacheService cacheService) : Controller
+    public class GreetingController(IGreetingRepository repository, ICacheService cacheService, ILogger<GreetingController> _logger) : Controller
     {
 
         [HttpGet]
@@ -52,6 +52,10 @@ namespace API.Controllers
 
                     return Ok(dataFromDB.Greetings);
                 }
+            }
+            else
+            {
+                _logger.LogInformation("Cache hit!");
             }
 
             return Ok(data.Greetings);

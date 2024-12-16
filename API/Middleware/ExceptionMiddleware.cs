@@ -22,6 +22,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
                 ? new ApiException(context.Response.StatusCode, ex.Message, ex.StackTrace)
                 : new ApiException(context.Response.StatusCode, ex.Message, "Internal server error");
 
+
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
