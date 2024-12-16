@@ -22,7 +22,7 @@ namespace API.Data
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         }
 
-        public T? Get<T>(string key)
+        public T Get<T>(string key)
         {
             if (string.IsNullOrEmpty(key)) throw new ArgumentException("Key cannot be null or empty.", nameof(key));
 

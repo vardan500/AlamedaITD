@@ -7,17 +7,8 @@ using Polly.RateLimit;
 
 namespace API.Middleware;
 
-public class RateLimitingMiddleware
+public class RateLimitingMiddleware(RequestDelegate _next, AsyncRateLimitPolicy _rateLimitPolicy, ILogger<RateLimitingMiddleware> _logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly AsyncRateLimitPolicy _rateLimitPolicy;
-
-    public RateLimitingMiddleware(RequestDelegate next, AsyncRateLimitPolicy rateLimitPolicy)
-    {
-        _next = next;
-        _rateLimitPolicy = rateLimitPolicy;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -31,6 +22,7 @@ public class RateLimitingMiddleware
         catch (RateLimitRejectedException)
         {
             // Respond with 429 Too Many Requests
+            _logger.LogWarning("Rate limit exceeded!");
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             await context.Response.WriteAsync("Rate limit exceeded. Try again later.");
         }
