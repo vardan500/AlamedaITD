@@ -19,17 +19,21 @@ namespace API.Data
 
         public MemoryCacheService(IMemoryCache memoryCache)
         {
-            _memoryCache = memoryCache;
+            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         }
 
-        public T Get<T>(string key)
+        public T? Get<T>(string key)
         {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentException("Key cannot be null or empty.", nameof(key));
+
             _memoryCache.TryGetValue(key, out T value);
-            return value;
+            return value ?? default!;
         }
 
         public void Set<T>(string key, T value, TimeSpan duration)
         {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentException("Key cannot be null or empty.", nameof(key));
+
             var cacheOptions = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(duration); // You can customize expiration as needed
             _memoryCache.Set(key, value, cacheOptions);
@@ -37,6 +41,7 @@ namespace API.Data
 
         public void Remove(string key)
         {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentException("Key cannot be null or empty.", nameof(key));
             _memoryCache.Remove(key);
         }
     }
