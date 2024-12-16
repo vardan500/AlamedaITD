@@ -9,18 +9,16 @@ using API.Data;
 using API.Entities;
 using Microsoft.EntityFrameworkCore;
 using API.Dto;
+using Polly;
+using Polly.RateLimit;
+using System.Collections.Generic;
 
 namespace API.Controllers
 {
-    [Route("[controller]")]
-    public class GreetingController(DataContext context) : Controller
-    {
-        // private readonly ILogger<GreetingsController> _logger;
 
-        // public GreetingsController(ILogger<GreetingsController> logger)
-        // {
-        //     _logger = logger;
-        // }
+    [Route("[controller]")]
+    public class GreetingController(IGreetingRepository repository, ICacheService cacheService) : Controller
+    {
 
         [HttpGet]
         public async Task<ActionResult> GetGreeting(string Name)
@@ -28,17 +26,35 @@ namespace API.Controllers
 
             if (String.IsNullOrEmpty(Name))
             {
-                return Ok("Hello, World!");
+                Name = "default";
             }
 
-            var greeting = await context.Greetings.FirstOrDefaultAsync(x => x.Name == Name);
+            string cacheKey = "greetingsKey";
+            var cachedData = cacheService?.Get<List<Greeting>>(cacheKey) ?? new List<Greeting>();
+            var data = cachedData.FirstOrDefault(g => g.Name == Name);
 
-            if (greeting == null)
+            if (data == null)
             {
-                return Ok("Hello, World!");
+                // Retrieve the data from the database
+                var dataFromDB = await repository.GetGreetingAsync(Name);
+
+                if (dataFromDB == null)
+                {
+                    return Ok("Hello, World!");
+                }
+                else
+                {
+                    // Add the new data to the cached list
+                    cachedData.Add(dataFromDB);
+
+                    // Update the cache with the updated list
+                    cacheService?.Set(cacheKey, cachedData, TimeSpan.FromMinutes(5));
+
+                    return Ok(dataFromDB.Greetings);
+                }
             }
 
-            return Ok(greeting.Greetings);
+            return Ok(data.Greetings);
         }
 
         [HttpPost]
@@ -46,23 +62,31 @@ namespace API.Controllers
         {
             if (greetingDto == null || String.IsNullOrEmpty(greetingDto.Name) || String.IsNullOrEmpty(greetingDto.Greetings))
             {
-                return BadRequest("Missing request data");
+                return BadRequest("Missing data");
             }
 
-            var greetingRecord = await context.Greetings.FirstOrDefaultAsync(n => n.Name == greetingDto.Name);
-            if (greetingRecord == null)
+            await repository.SaveGreetingAsync(greetingDto);
+
+            // Update cache
+            string cacheKey = "greetingsKey";
+            var cachedGreetings = cacheService.Get<List<Greeting>>(cacheKey) ?? new List<Greeting>();
+
+            var existingGreeting = cachedGreetings.Find(g => g.Name == greetingDto.Name);
+            if (existingGreeting != null)
             {
-                context.Greetings.Add(new Greeting { Name = greetingDto.Name, Greetings = greetingDto.Greetings });
+                // Update existing greeting in cache
+                existingGreeting.Greetings = greetingDto.Greetings;
             }
             else
             {
-                greetingRecord.Greetings = greetingDto.Greetings;
-                context.Entry(greetingRecord).State = EntityState.Modified;
+                // Add new greeting to cache
+                var newGreeting = await repository.GetGreetingAsync(greetingDto.Name);
+                cachedGreetings.Add(newGreeting);
             }
 
-            await context.SaveChangesAsync();
+            cacheService.Set(cacheKey, cachedGreetings, TimeSpan.FromMinutes(5));
 
-            return NoContent("Created Successfully");
+            return NoContent();
         }
 
     }
