@@ -12,11 +12,10 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<DataContext>(opt =>
-opt.UseSqlite(builder.Configuration.GetConnectionString("ITDConn")));
+    opt.UseSqlite(builder.Configuration.GetConnectionString("ITDConn")));
 
 builder.Services.AddScoped<IGreetingRepository, GreetingRepository>();
 builder.Services.AddMemoryCache();
@@ -32,12 +31,8 @@ var rateLimitPolicy = Policy.RateLimitAsync(
 // Register the policy
 builder.Services.AddSingleton(rateLimitPolicy);
 
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-
 
 var app = builder.Build();
 
@@ -52,10 +47,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
-//app.UseHttpsRedirection();
-
-//app.UseAuthorization();
 
 app.MapControllers();
 

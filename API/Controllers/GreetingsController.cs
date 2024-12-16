@@ -20,36 +20,38 @@ namespace API.Controllers
     public class GreetingController(IGreetingRepository repository, ICacheService cacheService, ILogger<GreetingController> _logger) : Controller
     {
 
+        // Get the greeting based on the name. If name is empty, use "default"
         [HttpGet]
         public async Task<ActionResult> GetGreeting(string Name)
         {
 
             if (String.IsNullOrEmpty(Name))
             {
-                Name = "default";
+                Name = "default"; // Default name if no input
             }
 
-            string cacheKey = "greetingsKey";
-            var cachedData = cacheService?.Get<List<Greeting>>(cacheKey) ?? new List<Greeting>();
-            var data = cachedData.FirstOrDefault(g => g.Name == Name);
+            string cacheKey = "greetingsKey"; // Cache key used for greeting data
+            var cachedData = cacheService?.Get<List<Greeting>>(cacheKey) ?? new List<Greeting>(); // Get cached data or an empty list if not found
+            var data = cachedData.FirstOrDefault(g => g.Name == Name); // Check if the greeting is already cached
 
             if (data == null)
             {
-                // Retrieve the data from the database
+                // If data not found in cache, retrieve it from the database
                 var dataFromDB = await repository.GetGreetingAsync(Name);
 
                 if (dataFromDB == null)
                 {
-                    return Ok("Hello, World!");
+                    return Ok("Hello, World!"); // Return default greeting if no data in DB
                 }
                 else
                 {
-                    // Add the new data to the cached list
+                    // Add the newly retrieved data to the cache
                     cachedData.Add(dataFromDB);
 
-                    // Update the cache with the updated list
+                    // Update the cache with the new list of greetings
                     cacheService?.Set(cacheKey, cachedData, TimeSpan.FromMinutes(5));
 
+                    // Return the greeting retrieved from DB
                     return Ok(dataFromDB.Greetings);
                 }
             }
@@ -61,6 +63,7 @@ namespace API.Controllers
             return Ok(data.Greetings);
         }
 
+        // Create a new greeting
         [HttpPost]
         public async Task<ActionResult<string>> Create(GreetingDto greetingDto)
         {
